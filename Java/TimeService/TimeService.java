@@ -1,31 +1,37 @@
+// Copyright (c) 2011, Yaler GmbH, Switzerland
+// All rights reserved
+
 import java.io.*;
 import java.net.*;
 import java.text.*;
 import java.util.*;
 
 class TimeService {
-	static boolean find (String pattern, InputStream s) throws IOException {
-		int[] x = new int[pattern.length()];
-		int i = 0, j = 0, t = 0;
-		boolean match;
-		do {
-			match = true;
-			for (int k = 0; (k != pattern.length()) && match; k++) {
-				if (i + k == j) {
-					x[j % x.length] = s.read();
-					j++;
-				}
-				t = x[(i + k) % x.length];
-				match = pattern.charAt(k) == t;
+	static boolean find (InputStream s, String pattern) throws IOException {
+		int i = 0, j = 0, k = 0, p = 0, c = 0, x = 0;
+		while ((k != pattern.length()) && (c != -1)) {
+			if (i + k == j) {
+				c = x = s.read();
+				p = i;
+				j++;
+			} else if (i + k == j - 1) {
+				c = x;
+			} else {
+				c = pattern.charAt(i + k - p);
 			}
-			i++;
-		} while (!match && (t != -1));
-		return match;
+			if (pattern.charAt(k) == c) {
+				k++;
+			} else {
+				k = 0;
+				i++;
+			}
+		}
+		return k == pattern.length();
 	}
 
 	static InetSocketAddress location (InputStream s) throws IOException {
 		InetSocketAddress location = null;
-		if (find("\r\nLocation: http://", s)) {
+		if (find(s, "\r\nLocation: http://")) {
 			StringBuilder host = new StringBuilder();
 			int port = 80;
 			int x = s.read();
@@ -68,7 +74,7 @@ class TimeService {
 					host = location != null? location.getHostName(): null;
 					port = location != null? location.getPort(): 0;
 				}
-				acceptable = find("\r\n\r\n", i);
+				acceptable = find(i, "\r\n\r\n");
 			} while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
 			if (!acceptable || (x[0] != '1') || (x[1] != '0') || (x[2] != '1')) {
 				s.close();

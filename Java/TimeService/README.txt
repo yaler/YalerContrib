@@ -1,23 +1,27 @@
 TimeService is an example of a simple Yaler Web service written in Java.
 
-Download the Yaler source from http://yaler.org/ and build it as described in
-README.txt. Then start the Yaler relay server with
-
-	java -ea -cp yaler.jar org.yaler.Yaler 127.0.0.1:80
-
-Now, compile the example source with
+First, compile the example source with
 
 	javac TimeService.java
 
-Start the service on your computer with
+Now, create a free Yaler account at http://yaler.net/ to get a unique relay
+domain for the Yaler instance hosted at try.yaler.net.
 
-	java TimeService 127.0.0.1 my-computer
+Then start TimeService on your computer with
 
-To access the service on your computer, visit
+	java TimeService try.yaler.net <relay domain>
 
-	http://127.0.0.1:80/my-computer/
+E.g., for the relay domain gsiot-ffmq-ttd5 enter
 
-with your browser. If it works, you should see a static Web page with the actual
-time on each reload. To get the full Yaler experience (access from any browser),
-you'll have to host the relay server on a separate computer with a public IP
-address and adapt all occurrences of 127.0.0.1 above and in the example source.
+	java TimeService try.yaler.net gsiot-ffmq-ttd5
+
+To access the service from everywhere, visit
+
+	http://try.yaler.net/<relay domain>
+
+In our example, TimeService would be accessible at
+
+	http://try.yaler.net/gsiot-ffmq-ttd5
+
+If everything works fine, you should see a static Web page with the actual time
+on each reload, served right from your computer.

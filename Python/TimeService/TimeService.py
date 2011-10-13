@@ -1,3 +1,6 @@
+# Copyright (c) 2011, Yaler GmbH, Switzerland
+# All rights reserved
+
 import sys
 import time
 import socket

@@ -1,19 +1,21 @@
-TimeService is an example of a simple Yaler Web service for Android 2.2.
+TimeService is an example of a simple Yaler Web service for Android.
 
-Download the Yaler source from http://yaler.org/ and build it as described in
-README.txt. Then start the Yaler relay server with 
+First, create a free Yaler account at http://yaler.net/ to get a unique relay
+domain for the Yaler instance hosted at try.yaler.net.
 
-        java -ea -cp yaler.jar org.yaler.Yaler <yaler_host>:8081 
-
-Note that Yaler has to be hosted on port 8081 on a computer with a public IP to be reachable from the Android device.
-
-Open the example Eclipse project and change YALER_HOST in the file TimeService.java to be your actual host.
+Then open the example Eclipse project and change the constant RELAY_DOMAIN in
+the file TimeService.java to your relay domain.
 
 Connect the Android device to your computer and press Run in Eclipse.
 
-To access the service on your computer, visit
+To access the service from everywhere, visit
 
-	http://<yaler_host>:8081/my-android/
+	http://try.yaler.net/<relay domain>
 
-with your browser. If it works, you should see a static Web page with the actual
-time on each reload.
+For example, given the relay domain gsiot-ffmq-ttd5, TimeService would be
+accessible at
+
+	http://try.yaler.net/gsiot-ffmq-ttd5
+
+If everything works fine, you should see a static Web page with the actual time
+on each reload, served right from your Android device.

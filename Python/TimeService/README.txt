@@ -1,19 +1,23 @@
-TimeService is an example of a simple Yaler Web service written in Python 2.7.
+TimeService is an example of a simple Yaler Web service written in Python.
 
-Download the Yaler source from http://yaler.org/ and build it as described in
-README.txt. Then start the Yaler relay server with
+First, create a free Yaler account at http://yaler.net/ to get a unique relay
+domain for the Yaler instance hosted at try.yaler.net.
 
-	java -ea -cp yaler.jar org.yaler.Yaler 127.0.0.1:80
+Then start TimeService on your computer with
 
-Now, start the service on your computer with
+	TimeService.py try.yaler.net <relay domain>
 
-	TimeService.py 127.0.0.1 my-computer
+E.g., for the relay domain gsiot-ffmq-ttd5 enter
 
-To access the service on your computer, visit
+	TimeService.py try.yaler.net gsiot-ffmq-ttd5
 
-	http://127.0.0.1:80/my-computer/
+To access the service from everywhere, visit
 
-with your browser. If it works, you should see a static Web page with the actual
-time on each reload. To get the full Yaler experience (access from any browser),
-you'll have to host the relay server on a separate computer with a public IP
-address and adapt all occurrences of 127.0.0.1 above and in the example source.
+	http://try.yaler.net/<relay domain>
+
+In our example, TimeService would be accessible at
+
+	http://try.yaler.net/gsiot-ffmq-ttd5
+
+If everything works fine, you should see a static Web page with the actual time
+on each reload, served right from your computer.

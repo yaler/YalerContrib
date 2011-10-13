@@ -10,7 +10,7 @@ public class TimeServiceActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);        
         setContentView(R.layout.main);
-		startService(new Intent(this, TimeService.class));
+        startService(new Intent(this, TimeService.class));
     }
 
 }

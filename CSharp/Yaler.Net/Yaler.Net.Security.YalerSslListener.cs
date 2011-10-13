@@ -1,16 +1,19 @@
-// Copyright (c) 2011, Oberon microsystems AG, Switzerland
+// Copyright (c) 2011, Yaler GmbH, Switzerland
 // All rights reserved
 
 namespace Yaler.Net.Security {
 	using System;
 	using System.IO;
+	using System.Net;
 	using System.Net.Security;
 	using System.Net.Sockets;
 	using System.Security.Cryptography.X509Certificates;
 	using System.Text;
 	using System.Threading;
+	using Yaler.Net.Sockets;
+	using Yaler.Net.Streams;
 
-	sealed class AsyncResult : IAsyncResult {
+	sealed class AsyncResult: IAsyncResult {
 		readonly object state;
 		readonly AsyncCallback callback;
 		readonly ManualResetEvent waitHandle;
@@ -19,8 +22,8 @@ namespace Yaler.Net.Security {
 		SslStream result;
 
 		AsyncResult (AsyncCallback callback, object state) {
-			this.callback = callback;
 			this.state = state;
+			this.callback = callback;
 			waitHandle = new ManualResetEvent(false);
 		}
 
@@ -87,7 +90,8 @@ namespace Yaler.Net.Security {
 		readonly string host, id;
 		readonly int port;
 		volatile bool aborted;
-		Socket listener;
+		volatile Socket listener;
+		volatile ProxyClient proxyClient;
 
 		public YalerSslListener (string host, int port, string id) {
 			this.host = host;
@@ -95,35 +99,11 @@ namespace Yaler.Net.Security {
 			this.id = id;
 		}
 
-		public void Abort () {
-			aborted = true;
-			try {
-				listener.Close();
-			} catch {}
-		}
-
-		void Find (string pattern, Stream s, out bool found) {
-			int[] x = new int[pattern.Length];
-			int i = 0, j = 0, t = 0;
-			do {
-				found = true;
-				for (int k = 0; (k != pattern.Length) && found; k++) {
-					if (i + k == j) {
-						x[j % x.Length] = s.ReadByte();
-						j++;
-					}
-					t = x[(i + k) % x.Length];
-					found = pattern[k] == t;
-				}
-				i++;
-			} while (!found && (t != -1));
-		}
-
-		void FindLocation (Stream s, out string host, out int port) {
+		static void FindLocation (Stream s, out string host, out int port) {
 			host = null;
 			port = 443;
 			bool found;
-			Find("\r\nLocation: https://", s, out found);
+			StreamHelper.Find(s, "\r\nLocation: https://", out found);
 			if (found) {
 				StringBuilder h = new StringBuilder();
 				int x = s.ReadByte();
@@ -143,72 +123,99 @@ namespace Yaler.Net.Security {
 			}
 		}
 
-		bool ValidateRemoteCertificate (
+		static bool ValidateRemoteCertificate (
 			object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors policyErrors)
 		{
 			return policyErrors == SslPolicyErrors.None;
 		}
 
+		public IWebProxy Proxy {
+			get {
+				return proxyClient != null? proxyClient.Proxy: null;
+			}
+			set {
+				proxyClient = value != null? new ProxyClient(value): null;
+			}
+		}
+
 		public SslStream AcceptSslStream () {
 			if (aborted) {
 				throw new InvalidOperationException();
-			} else {
+			}
+			try {
 				string host = this.host;
 				int port = this.port;
-				SslStream s;
-				bool acceptable;
+				SslStream result = null;
+				bool acceptable = false;
 				int[] x = new int[3];
 				do {
-					listener = new Socket(
-						AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-					listener.NoDelay = true;
-					listener.Connect(host, port);
-					s = new SslStream(new NetworkStream(listener, true), false,
-						new RemoteCertificateValidationCallback(ValidateRemoteCertificate));
-					s.AuthenticateAsClient(host);
-					do {
-						s.Write(Encoding.ASCII.GetBytes(
-							"POST /" + id + " HTTP/1.1\r\n" +
-							"Upgrade: PTTH/1.0\r\n" +
-							"Connection: Upgrade\r\n" +
-							"Host: " + host + "\r\n\r\n"));
-						for (int j = 0; j != 12; j++) {
-							x[j % 3] = s.ReadByte();
+					if (proxyClient == null) {
+						listener = new Socket(
+							AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+						if (!aborted) {
+							listener.Connect(host, port);
 						}
-						if ((x[0] == '3') && (x[1] == '0') && (x[2] == '7')) {
-							FindLocation(s, out host, out port);
+					} else {
+						listener = proxyClient.ConnectSocket(host, port);
+					}
+					if (!aborted) {
+						listener.NoDelay = true;
+						result = new SslStream(
+							new NetworkStream(listener, true),
+							false, ValidateRemoteCertificate);
+						result.AuthenticateAsClient(host);
+						do {
+							result.Write(Encoding.ASCII.GetBytes(
+								"POST /" + id + " HTTP/1.1\r\n" +
+								"Upgrade: PTTH/1.0\r\n" +
+								"Connection: Upgrade\r\n" +
+								"Host: " + host + "\r\n\r\n"));
+							for (int i = 0; i != 12; i++) {
+								x[i % 3] = result.ReadByte();
+							}
+							if ((x[0] == '3') && (x[1] == '0') && (x[2] == '7')) {
+								FindLocation(result, out host, out port);
+							}
+							StreamHelper.Find(result, "\r\n\r\n", out acceptable);
+						} while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
+						if (!acceptable || (x[0] != '1') || (x[1] != '0') || (x[2] != '1')) {
+							result.Close();
+							result = null;
 						}
-						Find("\r\n\r\n", s, out acceptable);
-					} while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
-					if (!acceptable || (x[0] != '1') || (x[1] != '0') || (x[2] != '1')) {
-						s.Close();
-						s = null;
 					}
 				} while (acceptable && ((x[0] == '3') && (x[1] == '0') && (x[2] == '7')));
+				return result;
+			} finally {
 				listener = null;
-				return s;
 			}
 		}
 
 		public IAsyncResult BeginAcceptSslStream (AsyncCallback callback, object state) {
 			if (aborted) {
 				throw new InvalidOperationException();
-			} else {
-				return AsyncResult.New(this, callback, state);
 			}
+			return AsyncResult.New(this, callback, state);
 		}
 
 		public SslStream EndAcceptSslStream (IAsyncResult r) {
 			if (aborted) {
 				throw new InvalidOperationException();
-			} else {
-				AsyncResult ar = r as AsyncResult;
-				if (ar == null) {
-					throw new ArgumentException();
-				} else {
-					return ar.End();
-				}
 			}
+			AsyncResult ar = r as AsyncResult;
+			if (ar == null) {
+				throw new ArgumentException();
+			}
+			return ar.End();
+		}
+
+		public void Abort () {
+			aborted = true;
+			try {
+				listener.Close();
+			} catch {}
+			try {
+				proxyClient.Abort();
+			} catch {}
 		}
 	}
 }
