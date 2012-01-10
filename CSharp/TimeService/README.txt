@@ -16,7 +16,7 @@ or on Mono with
 	gmcs TimeService.cs
 
 Then create a free Yaler account at http://yaler.net/ to get a unique relay
-domain for the Yaler instance hosted at try.yaler.net.
+domain for the Yaler trial instance hosted at try.yaler.net.
 
 To start TimeService on your computer enter
 
