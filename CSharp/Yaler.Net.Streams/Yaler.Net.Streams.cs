@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Yaler GmbH, Switzerland
+// Copyright (c) 2012, Yaler GmbH, Switzerland
 // All rights reserved
 
 namespace Yaler.Net.Streams {
@@ -8,7 +8,6 @@ namespace Yaler.Net.Streams {
 	using System.Net;
 	using System.Net.Security;
 	using System.Net.Sockets;
-	using System.Security.Cryptography.X509Certificates;
 	using System.Text;
 	using System.Threading;
 	using Yaler.Net.Security;
@@ -17,7 +16,8 @@ namespace Yaler.Net.Streams {
 	public class YalerKeepAliveStream: Stream {
 		static readonly byte[] emptyBuffer = new byte[0];
 
-		readonly object lockObject = new object();
+		readonly object readLockObject = new object();
+		readonly object writeLockObject = new object();
 
 		readonly Stream stream;
 		readonly int keepAliveInterval;
@@ -27,23 +27,52 @@ namespace Yaler.Net.Streams {
 		public YalerKeepAliveStream (Stream stream, int keepAliveInterval) {
 			this.stream = stream;
 			this.keepAliveInterval = keepAliveInterval;
+			Thread receiverThread = new Thread(ReceiveKeepAlive);
+			receiverThread.IsBackground = true;
+			receiverThread.Start();
 			if (keepAliveInterval >= 0) {
-				(new Thread(KeepAlive)).Start();
+				Thread senderThread = new Thread(SendKeepAlive);
+				senderThread.IsBackground = true;
+				senderThread.Start();
 			}
 		}
 
-		void KeepAlive () {
-			bool disposed = false;
-			do {
-				try {
+		public event EventHandler KeepAliveFailed;
+
+		void SendKeepAlive () {
+			try {
+				while (true) {
 					Write(emptyBuffer, 0, 0);
-				} catch (ObjectDisposedException) {
-					disposed = true;
-				} catch {
-					// ignore other exceptions
+					Thread.Sleep(keepAliveInterval);
 				}
-				Thread.Sleep(keepAliveInterval);
-			} while (!disposed);
+			} catch (ObjectDisposedException) {
+				// ignore
+			} catch (Exception) {
+				EventHandler keepAliveFailed = KeepAliveFailed;
+				if (keepAliveFailed != null) {
+					keepAliveFailed(this, EventArgs.Empty);
+				}
+			}
+		}
+
+		void ReceiveKeepAlive () {
+			try {
+				lock (readLockObject) {
+					while (remaining >= 0) {
+						while (remaining > 0) {
+							Monitor.Wait(readLockObject);
+						}
+						DoRead(emptyBuffer, 0, 0);
+					}
+				}
+			} catch (ObjectDisposedException) {
+				// ignore
+			} catch (Exception) {
+				EventHandler keepAliveFailed = KeepAliveFailed;
+				if (keepAliveFailed != null) {
+					keepAliveFailed(this, EventArgs.Empty);
+				}
+			}
 		}
 
 		public override bool CanRead {
@@ -54,7 +83,7 @@ namespace Yaler.Net.Streams {
 
 		public override bool CanSeek {
 			get {
-				return stream.CanSeek;
+				return false;
 			}
 		}
 
@@ -64,38 +93,66 @@ namespace Yaler.Net.Streams {
 			}
 		}
 
+		public override bool CanTimeout {
+			get {
+				return stream.CanTimeout;
+			}
+		}
+
+		public override int ReadTimeout {
+			get {
+				return stream.ReadTimeout;
+			}
+			set {
+				stream.ReadTimeout = value;
+			}
+		}
+
+		public override int WriteTimeout {
+			get {
+				return stream.WriteTimeout;
+			}
+			set {
+				stream.WriteTimeout = value;
+			}
+		}
+
 		public override long Length {
 			get {
-				return stream.Length;
+				throw new NotSupportedException();
 			}
 		}
 
 		public override long Position {
 			get {
-				return stream.Position;
+				throw new NotSupportedException();
 			}
 			set {
-				stream.Position = value;
+				throw new NotSupportedException();
 			}
 		}
 
 		public override void Close () {
-			stream.Close();
+			lock (writeLockObject) {
+				stream.Close();
+			}
 		}
 
 		public override void Flush () {
-			stream.Flush();
+			lock (writeLockObject) {
+				stream.Flush();
+			}
 		}
 
 		public override long Seek (long offset, SeekOrigin origin) {
-			return stream.Seek(offset, origin);
+			throw new NotSupportedException();
 		}
 
 		public override void SetLength (long length) {
-			stream.SetLength(length);
+			throw new NotSupportedException();
 		}
 
-		public override int Read (byte[] buffer, int offset, int count) {
+		int DoRead (byte[] buffer, int offset, int count) {
 			int result = 0;
 			if (remaining == 0) {
 				byte[] lengthBuffer = new byte[4];
@@ -109,15 +166,18 @@ namespace Yaler.Net.Streams {
 					} while ((headerRead > 0) && (headerPos != lengthBuffer.Length));
 					if (headerPos == lengthBuffer.Length) {
 						remaining = BitConverter.ToInt32(lengthBuffer, 0);
+					} else {
+						remaining = -1;
 					}
-				} while ((headerRead > 0) && (remaining == 0));
+				} while (remaining == 0);
 			}
-			if (remaining != 0) {
+			if (remaining > 0) {
 				int bytesToRead = Math.Min(count, remaining);
 				int bufferRead;
 				int bufferPos = offset;
 				do {
-					bufferRead = stream.Read(buffer, bufferPos, bytesToRead - (bufferPos - offset));
+					bufferRead = stream.Read(
+						buffer, bufferPos, bytesToRead - (bufferPos - offset));
 					bufferPos += bufferRead;
 				} while ((bufferRead > 0) && (bufferPos - offset != bytesToRead));
 				result = bufferPos - offset;
@@ -126,8 +186,20 @@ namespace Yaler.Net.Streams {
 			return result;
 		}
 
+		public override int Read (byte[] buffer, int offset, int count) {
+			lock (readLockObject) {
+				try {
+					return DoRead(buffer, offset, count);
+				} finally {
+					if (remaining <= 0) {
+						Monitor.Pulse(readLockObject);
+					}
+				}
+			}
+		}
+
 		public override void Write (byte[] buffer, int offset, int count) {
-			lock (lockObject) {
+			lock (writeLockObject) {
 				byte[] lengthBuffer = BitConverter.GetBytes(count);
 				stream.Write(lengthBuffer, 0, lengthBuffer.Length);
 				if (count > 0) {
@@ -175,9 +247,13 @@ namespace Yaler.Net.Streams {
 			}
 		}
 
-		void DoAcceptSslStream (object listener) {
+		void DoAcceptSslStream (object arg) {
 			try {
-				result = (listener as YalerSslTcpListener).AcceptSslStream();
+				object[] args = arg as object[];
+				YalerSslStreamListener listener =
+					args[0] as YalerSslStreamListener;
+				result = listener.AcceptSslStream(
+					args[1] as RemoteCertificateValidationCallback);
 			} catch (Exception e) {
 				exception = e;
 			} finally {
@@ -189,9 +265,13 @@ namespace Yaler.Net.Streams {
 			}
 		}
 
-		void DoConnectSslStream (object client) {
+		void DoConnectSslStream (object arg) {
 			try {
-				result = (client as YalerSslTcpClient).ConnectSslStream();
+				object[] args = arg as object[];
+				YalerSslStreamClient client =
+					args[0] as YalerSslStreamClient;
+				result = client.ConnectSslStream(
+					args[1] as RemoteCertificateValidationCallback);
 			} catch (Exception e) {
 				exception = e;
 			} finally {
@@ -217,49 +297,66 @@ namespace Yaler.Net.Streams {
 			}
 		}
 
-		internal static AsyncResult NewListenerResult (YalerSslTcpListener listener,
-			AsyncCallback callback, object state)
+		internal static AsyncResult NewListenerResult (
+			YalerSslStreamListener listener,
+			RemoteCertificateValidationCallback userCertificateValidationCallback,
+			AsyncCallback asyncCallback, object state)
 		{
-			AsyncResult result = new AsyncResult(callback, state);
-			ThreadPool.QueueUserWorkItem(new WaitCallback(result.DoAcceptSslStream), listener);
+			AsyncResult result = new AsyncResult(asyncCallback, state);
+			ThreadPool.QueueUserWorkItem(
+				new WaitCallback(result.DoAcceptSslStream),
+				new object[] {listener, userCertificateValidationCallback});
 			return result;
 		}
 
-		internal static AsyncResult NewClientResult (YalerSslTcpClient client,
-			AsyncCallback callback, object state)
+		internal static AsyncResult NewClientResult (
+			YalerSslStreamClient client,
+			RemoteCertificateValidationCallback userCertificateValidationCallback,
+			AsyncCallback asyncCallback, object state)
 		{
-			AsyncResult result = new AsyncResult(callback, state);
-			ThreadPool.QueueUserWorkItem(new WaitCallback(result.DoConnectSslStream), client);
+			AsyncResult result = new AsyncResult(asyncCallback, state);
+			ThreadPool.QueueUserWorkItem(
+				new WaitCallback(result.DoConnectSslStream),
+				new object[] {client, userCertificateValidationCallback});
 			return result;
 		}
 	}
 
-	public sealed class YalerSslTcpListener {
+	public sealed class YalerSslStreamListener {
 		readonly YalerSslListener listener;
 		readonly byte[] response;
 
-		public YalerSslTcpListener (YalerSslListener listener) {
+		public YalerSslStreamListener (YalerSslListener listener) {
 			this.listener = listener;
 			response = Encoding.ASCII.GetBytes(
 				"HTTP/1.1 101 Switching Protocols\r\n" +
-				"Upgrade: TCP\r\n" +
+				"Upgrade: plainsocket\r\n" +
 				"Connection: Upgrade\r\n\r\n");
 		}
 
-		public SslStream AcceptSslStream () {
-			SslStream result = listener.AcceptSslStream();
-			bool found;
-			StreamHelper.Find(result, "\r\n\r\n", out found);
-			if (found) {
-				result.Write(response, 0, response.Length);
-			} else {
-				result = null;
+		public SslStream AcceptSslStream (
+			RemoteCertificateValidationCallback userCertificateValidationCallback) 
+		{
+			SslStream result = listener.AcceptSslStream(
+				userCertificateValidationCallback);
+			if (result != null) {
+				bool found;
+				StreamHelper.Find(result, "\r\n\r\n", out found);
+				if (found) {
+					result.Write(response, 0, response.Length);
+					result.Flush();
+				} else {
+					result = null;
+				}
 			}
 			return result;
 		}
 
-		public IAsyncResult BeginAcceptSslStream (AsyncCallback callback, object state) {
-			return AsyncResult.NewListenerResult(this, callback, state);
+		public IAsyncResult BeginAcceptSslStream (
+			RemoteCertificateValidationCallback userCertificateValidationCallback,
+			AsyncCallback asyncCallback, object state) {
+			return AsyncResult.NewListenerResult(
+				this, userCertificateValidationCallback, asyncCallback, state);
 		}
 
 		public SslStream EndAcceptSslStream(IAsyncResult r) {
@@ -271,12 +368,12 @@ namespace Yaler.Net.Streams {
 		}
 	}
 
-	public sealed class YalerSslTcpClient {
+	public sealed class YalerSslStreamClient {
 		readonly string host, id;
 		readonly int port;
 		ProxyClient proxyClient;
 
-		public YalerSslTcpClient (string host, int port, string id) {
+		public YalerSslStreamClient (string host, int port, string id) {
 			this.host = host;
 			this.port = port;
 			this.id = id;
@@ -306,12 +403,6 @@ namespace Yaler.Net.Streams {
 			}
 		}
 
-		static bool ValidateRemoteCertificate (
-			object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors policyErrors)
-		{
-			return policyErrors == SslPolicyErrors.None;
-		}
-
 		public IWebProxy Proxy {
 			get {
 				return proxyClient != null? proxyClient.Proxy: null;
@@ -321,7 +412,8 @@ namespace Yaler.Net.Streams {
 			}
 		}
 
-		public SslStream ConnectSslStream () {
+		public SslStream ConnectSslStream (
+			RemoteCertificateValidationCallback userCertificateValidationCallback) {
 			string host = this.host;
 			int port = this.port;
 			Socket socket;
@@ -339,13 +431,14 @@ namespace Yaler.Net.Streams {
 				socket.NoDelay = true;
 				result = new SslStream(
 					new NetworkStream(socket, true),
-					false, ValidateRemoteCertificate);
+					false, userCertificateValidationCallback);
 				result.AuthenticateAsClient(host);
 				result.Write(Encoding.ASCII.GetBytes(
 					"OPTIONS /" + id + " HTTP/1.1\r\n" +
-					"Upgrade: TCP\r\n" +
+					"Upgrade: plainsocket\r\n" +
 					"Connection: Upgrade\r\n" +
 					"Host: " + host + "\r\n\r\n"));
+				result.Flush();
 				for (int i = 0; i != 12; i++) {
 					x[i % 3] = result.ReadByte();
 				}
@@ -361,8 +454,12 @@ namespace Yaler.Net.Streams {
 			return result;
 		}
 
-		public IAsyncResult BeginConnectSslStream (AsyncCallback callback, object state) {
-			return AsyncResult.NewClientResult(this, callback, state);
+		public IAsyncResult BeginConnectSslStream (
+			RemoteCertificateValidationCallback userCertificateValidationCallback, 
+			AsyncCallback asyncCallback, object state)
+		{
+			return AsyncResult.NewClientResult(this,
+				userCertificateValidationCallback, asyncCallback, state);
 		}
 
 		public SslStream EndConnectSslStream(IAsyncResult r) {

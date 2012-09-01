@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Yaler GmbH, Switzerland
+// Copyright (c) 2012, Yaler GmbH, Switzerland
 // All rights reserved
 
 using System;
@@ -14,6 +14,8 @@ class Program {
 			l.Proxy = new WebProxy(args[3], int.Parse(args[4]));
 			if (args.Length > 5) {
 				l.Proxy.Credentials = new NetworkCredential(args[5], args[6]);
+			} else {
+				l.Proxy.Credentials = CredentialCache.DefaultNetworkCredentials;
 			}
 		}
 		while (true) {

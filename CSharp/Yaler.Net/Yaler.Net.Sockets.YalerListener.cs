@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Yaler GmbH, Switzerland
+// Copyright (c) 2012, Yaler GmbH, Switzerland
 // All rights reserved
 
 namespace Yaler.Net.Sockets {
@@ -144,6 +144,7 @@ namespace Yaler.Net.Sockets {
 					if (proxyClient == null) {
 						listener = new Socket(
 							AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+						listener.ReceiveTimeout = 75000;
 						if (!aborted) {
 							listener.Connect(host, port);
 						}
@@ -168,7 +169,9 @@ namespace Yaler.Net.Sockets {
 							}
 							SocketHelper.Find(result, "\r\n\r\n", out acceptable);
 						} while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
-						if (!acceptable || (x[0] != '1') || (x[1] != '0') || (x[2] != '1')) {
+						if (acceptable && (x[0] == '1') && (x[1] == '0') && (x[2] == '1')) {
+							listener.ReceiveTimeout = 0;
+						} else {
 							result.Close();
 							result = null;
 						}

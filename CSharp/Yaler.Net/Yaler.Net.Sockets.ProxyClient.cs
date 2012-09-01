@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Yaler GmbH, Switzerland
+// Copyright (c) 2012, Yaler GmbH, Switzerland
 // All rights reserved
 
 namespace Yaler.Net.Sockets {
@@ -10,6 +10,8 @@ namespace Yaler.Net.Sockets {
 	using System.Net.Sockets;
 
 	public sealed class ProxyClient {
+		const int WSAEACCES = 10013;
+
 		readonly IWebProxy proxy;
 		volatile bool aborted;
 		volatile Socket socket;
@@ -51,7 +53,7 @@ namespace Yaler.Net.Sockets {
 			return result;
 		}
 
-		static string NtlmToken (Uri uri, Uri proxyUri, NetworkCredential nc,
+		static string NtlmToken (Uri uri, Uri proxyUri,
 			NtlmContext c, string challenge)
 		{
 			byte[] token;
@@ -88,6 +90,7 @@ namespace Yaler.Net.Sockets {
 				const int Authorizing = 0, Authorized = 1, Unauthorized = 2, Error = 3;
 				socket = new Socket(
 					AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+				socket.ReceiveTimeout = 75000;
 				if (!aborted) {
 					s = socket;
 					Uri uri = new Uri("http://" + host + ":" + port + "/");
@@ -103,14 +106,21 @@ namespace Yaler.Net.Sockets {
 						int state = Authorizing;
 						do {
 							string token = null;
-							if (proxy.Credentials != null) {
+							if ((proxy.Credentials == CredentialCache.DefaultNetworkCredentials)
+								&& (authType == Ntlm))
+							{
+								if (ntlmContext == null) {
+									ntlmContext = new NtlmContext(null, null, null);
+								}
+								token = NtlmToken(uri, proxyUri, ntlmContext, challenge);
+							} else if (proxy.Credentials != null) {
 								NetworkCredential c = proxy.Credentials.GetCredential(uri, authType);
 								if (c != null) {
 									if (authType == Ntlm) {
 										if (ntlmContext == null) {
 											ntlmContext = new NtlmContext(c.UserName, c.Domain, c.Password);
 										}
-										token = NtlmToken(uri, proxyUri, c, ntlmContext, challenge);
+										token = NtlmToken(uri, proxyUri, ntlmContext, challenge);
 									} else if (authType == Digest) {
 										if (digestContext == null) {
 											digestContext = new DigestContext();
@@ -178,7 +188,7 @@ namespace Yaler.Net.Sockets {
 						}
 						if (state != Authorized) {
 							s.Close();
-							throw new SocketException();
+							throw new SocketException(WSAEACCES);
 						}
 					}
 				}

@@ -1,4 +1,4 @@
-// Copyright (c) 2011, Yaler GmbH, Switzerland
+// Copyright (c) 2012, Yaler GmbH, Switzerland
 // All rights reserved
 
 namespace Yaler.Net.Security {
@@ -7,7 +7,6 @@ namespace Yaler.Net.Security {
 	using System.Net;
 	using System.Net.Security;
 	using System.Net.Sockets;
-	using System.Security.Cryptography.X509Certificates;
 	using System.Text;
 	using System.Threading;
 	using Yaler.Net.Sockets;
@@ -51,9 +50,11 @@ namespace Yaler.Net.Security {
 			}
 		}
 
-		void DoAcceptSslStream (object listener) {
+		void DoAcceptSslStream (object arg) {
 			try {
-				result = (listener as YalerSslListener).AcceptSslStream();
+				object[] args = arg as object[];
+				YalerSslListener listener = args[0] as YalerSslListener;
+				result = listener.AcceptSslStream(args[1] as RemoteCertificateValidationCallback);
 			} catch (Exception e) {
 				exception = e;
 			} finally {
@@ -79,9 +80,14 @@ namespace Yaler.Net.Security {
 			}
 		}
 
-		internal static AsyncResult New (YalerSslListener listener, AsyncCallback callback, object state) {
-			AsyncResult result = new AsyncResult(callback, state);
-			ThreadPool.QueueUserWorkItem(new WaitCallback(result.DoAcceptSslStream), listener);
+		internal static AsyncResult New (YalerSslListener listener, 
+			RemoteCertificateValidationCallback userCertificateValidationCallback,
+			AsyncCallback asyncCallback, object state) 
+		{
+			AsyncResult result = new AsyncResult(asyncCallback, state);
+			ThreadPool.QueueUserWorkItem(
+				new WaitCallback(result.DoAcceptSslStream), 
+				new object[] {listener, userCertificateValidationCallback});
 			return result;
 		}
 	}
@@ -123,12 +129,6 @@ namespace Yaler.Net.Security {
 			}
 		}
 
-		static bool ValidateRemoteCertificate (
-			object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors policyErrors)
-		{
-			return policyErrors == SslPolicyErrors.None;
-		}
-
 		public IWebProxy Proxy {
 			get {
 				return proxyClient != null? proxyClient.Proxy: null;
@@ -138,7 +138,8 @@ namespace Yaler.Net.Security {
 			}
 		}
 
-		public SslStream AcceptSslStream () {
+		public SslStream AcceptSslStream (
+			RemoteCertificateValidationCallback userCertificateValidationCallback) {
 			if (aborted) {
 				throw new InvalidOperationException();
 			}
@@ -152,6 +153,7 @@ namespace Yaler.Net.Security {
 					if (proxyClient == null) {
 						listener = new Socket(
 							AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+						listener.ReceiveTimeout = 75000;
 						if (!aborted) {
 							listener.Connect(host, port);
 						}
@@ -162,7 +164,7 @@ namespace Yaler.Net.Security {
 						listener.NoDelay = true;
 						result = new SslStream(
 							new NetworkStream(listener, true),
-							false, ValidateRemoteCertificate);
+							false, userCertificateValidationCallback);
 						result.AuthenticateAsClient(host);
 						do {
 							result.Write(Encoding.ASCII.GetBytes(
@@ -170,6 +172,7 @@ namespace Yaler.Net.Security {
 								"Upgrade: PTTH/1.0\r\n" +
 								"Connection: Upgrade\r\n" +
 								"Host: " + host + "\r\n\r\n"));
+							result.Flush();
 							for (int i = 0; i != 12; i++) {
 								x[i % 3] = result.ReadByte();
 							}
@@ -178,7 +181,9 @@ namespace Yaler.Net.Security {
 							}
 							StreamHelper.Find(result, "\r\n\r\n", out acceptable);
 						} while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
-						if (!acceptable || (x[0] != '1') || (x[1] != '0') || (x[2] != '1')) {
+						if (acceptable && (x[0] == '1') && (x[1] == '0') &&(x[2] == '1')) {
+							result.ReadTimeout = Timeout.Infinite;
+						} else {
 							result.Close();
 							result = null;
 						}
@@ -190,11 +195,15 @@ namespace Yaler.Net.Security {
 			}
 		}
 
-		public IAsyncResult BeginAcceptSslStream (AsyncCallback callback, object state) {
+		public IAsyncResult BeginAcceptSslStream (
+			RemoteCertificateValidationCallback userCertificateValidationCallback,
+			AsyncCallback asyncCallback, object state)
+		{
 			if (aborted) {
 				throw new InvalidOperationException();
 			}
-			return AsyncResult.New(this, callback, state);
+			return AsyncResult.New(
+				this, userCertificateValidationCallback, asyncCallback, state);
 		}
 
 		public SslStream EndAcceptSslStream (IAsyncResult r) {

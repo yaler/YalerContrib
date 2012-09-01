@@ -1,5 +1,5 @@
 @echo off
-set PATH=%PATH%;C:\WINDOWS\Microsoft.NET\Framework\v2.0.50727
+set CSC=C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\csc.exe
 copy /y ..\Yaler.Net\Yaler.Net.dll . > NUL
-csc /nologo TimeService.cs /r:Yaler.Net.dll
-csc /nologo SecureTimeService.cs /r:Yaler.Net.dll
+%CSC% /nologo TimeService.cs /r:Yaler.Net.dll
+%CSC% /nologo SecureTimeService.cs /r:Yaler.Net.dll
