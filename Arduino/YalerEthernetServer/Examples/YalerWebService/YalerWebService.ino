@@ -6,14 +6,15 @@
 #include <YalerEthernetServer.h>
 
 // Enter a MAC address for your controller below.
-// Newer Ethernet shields have a MAC address printed on a sticker on the shield
+// Some Ethernet shields have a MAC address printed on a sticker
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
-// Local EthernetServer at http://<LOCAL_IP>/ (e.g. http://192.168.0.7/)
+// Local EthernetServer at http://LOCAL_IP/ (e.g. http://192.168.0.7/)
 //EthernetServer server(80);
 
-// Public YalerEthernetServer accessible at http://my-arduino.yaler.net/
-YalerEthernetServer server("try.yaler.net", 80, "my-arduino");
+// Get a free relay domain at http://yaler.net/ to replace RELAY_DOMAIN below
+// Public YalerEthernetServer is accessible at http://RELAY_DOMAIN.yaler.net/
+YalerEthernetServer server("try.yaler.net", 80, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(9600);
