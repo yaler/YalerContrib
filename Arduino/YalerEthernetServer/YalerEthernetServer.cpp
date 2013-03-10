@@ -1,8 +1,8 @@
 // Copyright (c) 2013, Oberon microsystems AG, Switzerland
 // All rights reserved
 
-include "EthernetClient.h"
-include "YalerEthernetServer.h"
+#include "EthernetClient.h"
+#include "YalerEthernetServer.h"
 
 YalerEthernetServer::YalerEthernetServer(const char *host, uint16_t port, const char *id)
 {
