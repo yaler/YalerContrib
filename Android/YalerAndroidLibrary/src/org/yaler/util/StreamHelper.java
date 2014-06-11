@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Yaler GmbH, Switzerland
+// Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
 package org.yaler.util;
@@ -9,7 +9,7 @@ import java.net.InetSocketAddress;
 
 public final class StreamHelper {
 	private StreamHelper() {}
-	
+
 	public static final String readLine(InputStream stream) throws IOException {
 		String line;
 		int buffer;
@@ -33,7 +33,7 @@ public final class StreamHelper {
 		}
 		return line;
 	}
-	
+
 	public static final boolean find(InputStream stream, String pattern) throws IOException {
 		byte[] bytePattern = pattern.getBytes();
 		int i = 0, j = 0, k = 0, p = 0, c = 0, x = 0;
@@ -56,7 +56,7 @@ public final class StreamHelper {
 		}
 		return k == pattern.length();
 	}
-	
+
 	public static final InetSocketAddress findLocation(InputStream stream, String protocol, int defaultPort) throws IOException {
 		InetSocketAddress address = null;
 		int port = defaultPort;
@@ -81,5 +81,5 @@ public final class StreamHelper {
 		}
 		return address;
 	}
-	
+
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Yaler GmbH, Switzerland
+// Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
 package org.yaler;
@@ -22,15 +22,19 @@ public final class YalerStreamingServerSocket implements Closeable {
 		this._baseListener = base;
 	}
 
+    public Socket accept() throws IOException {
+        return accept(null);
+    }
+
     @SuppressWarnings("resource")
-	public Socket accept() throws IOException {
-		if (this._closed) {
+    public Socket accept(AcceptCallback acceptCallback) throws IOException {
+   	    if (this._closed) {
 			throw new SocketException("YalerStreamingServerSocket is closed"); //$NON-NLS-1$
 		}
 		try {
 			boolean acceptable = false;
 			Socket result = null;
-			this._listener = this._baseListener.accept();
+			this._listener = this._baseListener.accept(acceptCallback);
 			if (!this._closed) {
 				this._listener.setSoTimeout(75000);
 				result = this._listener;

@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Yaler GmbH, Switzerland
+// Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
 package org.yaler.util;
@@ -10,13 +10,13 @@ import java.util.Map;
 
 public final class HttpHelper {
 	private HttpHelper() {}
-	
+
 	public static final int HTTP_SWITCHING_PROTOCOLS = 101;
 	public static final int HTTP_OK = 200;
 	public static final int HTTP_NO_CONTENT = 204;
 	public static final int HTTP_TEMPORARY_REDIRECT = 307;
 	public static final int HTTP_PROXY_AUTHENTICATION_REQUIRED = 407;
-	
+
 	public static final int receiveHttpStatusLineStatusCode(InputStream stream) throws IOException, MalformedHttpResponseException {
 		int statusCode = -1;
 		String line = StreamHelper.readLine(stream);
@@ -31,7 +31,7 @@ public final class HttpHelper {
 		}
 		return statusCode;
 	}
-	
+
 	public static final Map<String, String> receiveHttpHeaders(InputStream stream) throws IOException {
 		Map<String,String> headers = new HashMap<String,String>();
 		String line = null, name = null, value = null;
@@ -51,7 +51,7 @@ public final class HttpHelper {
 		}
 		return headers;
 	}
-	
+
 	public static final int getContentLength(Map<String,String> headers) throws MalformedHttpResponseException {
 		int contentLength = 0;
 		String value = headers.get("Content-Length"); //$NON-NLS-1$
@@ -64,7 +64,7 @@ public final class HttpHelper {
 		}
 		return contentLength;
 	}
-	
+
 	public static final void skipBody(InputStream stream, int length) throws IOException {
 		byte[] buffer = new byte[256];
         int c = 0;
@@ -84,5 +84,5 @@ public final class HttpHelper {
             }
         }
 	}
-	
+
 }

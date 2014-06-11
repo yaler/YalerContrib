@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Yaler GmbH, Switzerland
+// Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
 package org.yaler.util;

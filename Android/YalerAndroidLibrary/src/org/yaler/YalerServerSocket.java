@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Yaler GmbH, Switzerland
+// Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
 package org.yaler;
@@ -45,11 +45,18 @@ public class YalerServerSocket implements Closeable {
 		return StreamHelper.findLocation(stream, "http", 80); //$NON-NLS-1$
 	}
 
+    public Socket accept() throws IOException {
+        return accept(null);
+    }
+
 	@SuppressWarnings("resource")
-	public Socket accept() throws IOException {
+	public Socket accept(AcceptCallback acceptCallback) throws IOException {
 		if (this._closed) {
 			throw new SocketException("YalerServerSocket is closed"); //$NON-NLS-1$
 		}
+		if (acceptCallback != null) {
+            acceptCallback.statusChanged(AcceptCallbackState.Undefined);
+        }
 		try {
 		    String host = this._host;
 	        int port = this._port;
@@ -79,9 +86,17 @@ public class YalerServerSocket implements Closeable {
 		            		port = address.getPort();
 		            	}
 		            	acceptable = StreamHelper.find(i, "\r\n\r\n"); //$NON-NLS-1$
+		            	if ((acceptCallback != null) &&
+                            acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')))
+                        {
+                            acceptCallback.statusChanged(AcceptCallbackState.Accessible);
+                        }
 		            } while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
 		            if (acceptable && (x[0] == '1') && (x[1] == '0') &&(x[2] == '1')) {
                         result.setSoTimeout(0);
+                        if (acceptCallback != null) {
+                            acceptCallback.statusChanged(AcceptCallbackState.Connected);
+                        }
 		            } else {
 		            	result.close();
 		            	result = null;
