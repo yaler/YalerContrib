@@ -1,24 +1,27 @@
 // Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
-#include "EthernetClient.h"
-#include "YalerEthernetServer.h"
+#include "Adafruit_CC3000.h"
+#include "Yaler_CC3000_Server.h"
 
-YalerEthernetServer::YalerEthernetServer(const char *host, uint16_t port, const char *id)
+Yaler_CC3000_Server::Yaler_CC3000_Server(const char *host, uint16_t port, const char *id)
 {
   _host = host;
   _port = port;
   _id = id;
 }
 
-void YalerEthernetServer::begin()
+void Yaler_CC3000_Server::begin()
 {
   // skip
 }
 
-EthernetClient YalerEthernetServer::available()
+Adafruit_CC3000_ClientRef Yaler_CC3000_Server::available()
 {
-  EthernetClient client;
+  if (_client.connected()) {
+    return Adafruit_CC3000_ClientRef(NULL);
+  }
+  Adafruit_CC3000_Client client;
   boolean acceptable;
   const char *host = _host;
   uint16_t port = _port;
@@ -29,14 +32,14 @@ EthernetClient YalerEthernetServer::available()
     //Serial.println("connected");
     do {
       //Serial.println("sending request...");
-      client.print("POST /");
-      client.print(_id);
-      client.print(" HTTP/1.1\r\n");
-      client.print("Upgrade: PTTH/1.0\r\n");
-      client.print("Connection: Upgrade\r\n");
-      client.print("Host: ");
-      client.print(host);
-      client.print("\r\n\r\n");
+      client.fastrprint(F("POST /"));
+      client.fastrprint(_id);
+      client.fastrprint(F(" HTTP/1.1\r\n"));
+      client.fastrprint(F("Upgrade: PTTH/1.0\r\n"));
+      client.fastrprint(F("Connection: Upgrade\r\n"));
+      client.fastrprint(F("Host: "));
+      client.fastrprint(host);
+      client.fastrprint(F("\r\n\r\n"));
       //Serial.println("receiving response...");
       boolean timeout = false;
       for (int j = 0; !timeout && (j != 12); j++) {
@@ -59,19 +62,20 @@ EthernetClient YalerEthernetServer::available()
     } while (acceptable && ((x[0] == '2') && (x[1] == '0') && (x[2] == '4')));
     if (!acceptable || (x[0] != '1') || (x[1] != '0') || (x[2] != '1')) {
       client.stop();
-      client = NULL;
+      // assert !client.connected();
       //Serial.println("client stopped");
     }
   }
-  return client;
+  _client = client;
+  return Adafruit_CC3000_ClientRef(&_client);
 }
 
-size_t YalerEthernetServer::write(uint8_t b) 
+size_t Yaler_CC3000_Server::write(uint8_t b) 
 {
   return write(&b, 1);
 }
 
-size_t YalerEthernetServer::write(const uint8_t *buffer, size_t size) 
+size_t Yaler_CC3000_Server::write(const uint8_t *buffer, size_t size) 
 {
   size_t n = 0;
   // TODO

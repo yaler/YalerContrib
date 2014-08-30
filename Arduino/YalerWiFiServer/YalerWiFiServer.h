@@ -1,3 +1,6 @@
+// Copyright (c) 2014, Yaler GmbH, Switzerland
+// All rights reserved
+
 #ifndef yalerWiFiserver_h
 #define yalerWiFiserver_h
 

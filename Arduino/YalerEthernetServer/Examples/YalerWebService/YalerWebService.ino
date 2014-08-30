@@ -1,4 +1,4 @@
-// Copyright (c) 2013, Oberon microsystems AG, Switzerland
+// Copyright (c) 2014, Yaler GmbH, Switzerland
 // All rights reserved
 
 #include <SPI.h>
