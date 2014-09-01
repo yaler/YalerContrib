@@ -21,7 +21,7 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(10, 3, 5, SPI_CLOCK_DIVIDER);
 
 // Get a free relay domain at http://yaler.net/ to replace "RELAY_DOMAIN" below
 // and access the public Web server via Yaler at http://RELAY_DOMAIN.yaler.net/
-Yaler_CC3000_Server server("try.yaler.net", 80, "tamberg-cc3000");
+Yaler_CC3000_Server server("try.yaler.net", 80, "RELAY_DOMAIN");
 
 void setup (void) {
   Serial.begin(9600);
