@@ -24,7 +24,11 @@ WiFiClient YalerWiFi101Server::available()
   uint16_t port = _port;
   int x[3];
   //Serial.println("connecting...");
-  acceptable = client.connect(host, port);
+  if (port == 443) {
+    acceptable = client.connectSSL(host, port);
+  } else {
+    acceptable = client.connect(host, port);
+  }
   if (acceptable) {
     //Serial.println("connected");
     do {
