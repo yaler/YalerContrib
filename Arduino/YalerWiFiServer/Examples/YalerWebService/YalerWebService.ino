@@ -19,7 +19,7 @@ YalerWiFiServer server("try.yaler.net", 80, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Aquiring IP address...");
+  Serial.println("Acquiring IP address...");
   if (WiFi.begin(ssid, pass) != WL_CONNECTED) {
     Serial.println("Connecting to WiFi failed.");
   } else {

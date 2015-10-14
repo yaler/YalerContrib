@@ -18,7 +18,7 @@ YalerEthernetServer server("try.yaler.net", 80, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Aquiring IP address...");
+  Serial.println("Acquiring IP address...");
   if (Ethernet.begin(mac) == 0) {
     Serial.println("DHCP failed.");
   } else {

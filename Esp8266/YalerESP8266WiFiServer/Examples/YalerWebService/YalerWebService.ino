@@ -19,7 +19,7 @@ YalerESP8266WiFiServer server("try.yaler.net", 80, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(115200);
-  Serial.print("Aquiring IP address...");
+  Serial.print("\nAcquiring IP address...");
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
