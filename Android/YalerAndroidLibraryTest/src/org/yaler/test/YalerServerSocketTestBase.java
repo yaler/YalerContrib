@@ -38,7 +38,7 @@ public abstract class YalerServerSocketTestBase extends TestCase {
 
 	@Override
 	protected void setUp () {
-		this._relayHost = "try.yaler.net"; //$NON-NLS-1$
+		this._relayHost = "try.yaler.io"; //$NON-NLS-1$
 		this._unreachableRelayHost = "try.yaler.invalid";// see http://tools.ietf.org/html/rfc2606 //$NON-NLS-1$
 		this._relayDomain = String.format("difian-%s", UUID.randomUUID()); //$NON-NLS-1$
 		Log.i(TAG, this._relayDomain);

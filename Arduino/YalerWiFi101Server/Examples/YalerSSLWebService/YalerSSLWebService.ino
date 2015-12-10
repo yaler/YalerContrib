@@ -10,9 +10,9 @@ char pass[] = "LOCAL_NETWORK_PASSWORD";
 
 int status = WL_IDLE_STATUS;
 
-// Get a free relay domain at http://yaler.net/ to replace RELAY_DOMAIN below
-// YalerWiFi101Server becomes accessible at https://RELAY_DOMAIN.yaler.net/
-YalerWiFi101Server server("try.yaler.net", 443, "RELAY_DOMAIN");
+// Get a relay domain at https://yaler.net/ to replace RELAY_DOMAIN below
+// YalerWiFi101Server is accessible at https://RELAY_DOMAIN.try.yaler.io/
+YalerWiFi101Server server("try.yaler.io", 443, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(9600);

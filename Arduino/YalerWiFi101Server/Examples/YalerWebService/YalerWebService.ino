@@ -13,9 +13,9 @@ int status = WL_IDLE_STATUS;
 // Local WiFiServer at http://LOCAL_IP/ (e.g. http://192.168.0.7/)
 //WiFiServer server(80);
 
-// Get a free relay domain at http://yaler.net/ to replace RELAY_DOMAIN below
-// YalerWiFi101Server is publicly accessible at http://RELAY_DOMAIN.yaler.net/
-YalerWiFi101Server server("try.yaler.net", 80, "RELAY_DOMAIN");
+// Get a relay domain at https://yaler.net/ to replace RELAY_DOMAIN below
+// YalerWiFi101Server is accessible at http://RELAY_DOMAIN.try.yaler.io/
+YalerWiFi101Server server("try.yaler.io", 80, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(9600);

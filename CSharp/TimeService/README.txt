@@ -15,28 +15,28 @@ or on Mono with
 
 	gmcs TimeService.cs
 
-Then create a free Yaler account at http://yaler.net/ to get a unique relay
-domain for the Yaler trial instance hosted at try.yaler.net.
+Then create a Yaler account at https://yaler.net/ to get a unique relay
+domain for the Yaler trial instance hosted at try.yaler.io.
 
 To start TimeService on your computer enter
 
-	TimeService try.yaler.net <relay domain>
+	TimeService try.yaler.io RELAY_DOMAIN
 
 or on Mono
 
-	mono TimeService try.yaler.net <relay domain>
+	mono TimeService try.yaler.io RELAY_DOMAIN
 
 E.g., for the relay domain gsiot-ffmq-ttd5 type
 
-	TimeService try.yaler.net gsiot-ffmq-ttd5
+	TimeService try.yaler.io gsiot-ffmq-ttd5
 
 To access the service from everywhere, visit
 
-	http://try.yaler.net/<relay domain>
+	http://RELAY_DOMAIN.try.yaler.io/
 
 In our example, TimeService would be accessible at
 
-	http://try.yaler.net/gsiot-ffmq-ttd5
+	http://gsiot-ffmq-ttd5.try.yaler.io/
 
 If everything works fine, you should see a static Web page with the actual time
 on each reload, served right from your computer.

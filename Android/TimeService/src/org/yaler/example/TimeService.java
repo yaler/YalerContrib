@@ -98,8 +98,8 @@ public class TimeService extends Service {
 
 	@Override
 	public int onStartCommand(Intent i, int flags, int startId) {
-		final String YALER_HOST = "try.yaler.net";
-		final String RELAY_DOMAIN = "<relay domain>";
+		final String YALER_HOST = "try.yaler.io";
+		final String RELAY_DOMAIN = "RELAY_DOMAIN";
 		new Thread(
 			new Runnable(){
 				public void run(){

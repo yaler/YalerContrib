@@ -1,4 +1,4 @@
-// Copyright (c) 2014, Yaler GmbH, Switzerland
+// Copyright (c) 2015, Yaler GmbH, Switzerland
 // All rights reserved
 
 #include <SPI.h>
@@ -12,9 +12,9 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 // Local EthernetServer at http://LOCAL_IP/ (e.g. http://192.168.0.7/)
 //EthernetServer server(80);
 
-// Get a free relay domain at http://yaler.net/ to replace RELAY_DOMAIN below
-// Public YalerEthernetServer is accessible at http://RELAY_DOMAIN.yaler.net/
-YalerEthernetServer server("try.yaler.net", 80, "RELAY_DOMAIN");
+// Get a relay domain at https://yaler.net/ to replace RELAY_DOMAIN below
+// YalerEthernetServer is accessible at http://RELAY_DOMAIN.try.yaler.io/
+YalerEthernetServer server("try.yaler.io", 80, "RELAY_DOMAIN");
 
 void setup() {
   Serial.begin(9600);
